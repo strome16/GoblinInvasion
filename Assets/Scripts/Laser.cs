@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Laser : MonoBehaviour
 {
-
+    [Header("Laser Settings")]
     public float speed = 20f; // speed of the laser projectile
     public int damage = 1; // damage dealt by the laser
 

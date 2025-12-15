@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Movement")]
     private Rigidbody playerRb;
     public float speed = 30f;
     public float jumpForce = 8f;
@@ -9,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public Transform cameraTransform;
     public float turnSpeed = 10f;
 
+    [Header("Input")]
     private float horizontalInput;
     private float verticalInput;
 
