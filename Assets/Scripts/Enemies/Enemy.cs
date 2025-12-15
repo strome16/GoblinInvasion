@@ -17,12 +17,18 @@ public class Enemy : MonoBehaviour
     [SerializeField] protected int contactDamage = 10; // deal 10 damage upon contact wtih player
     [SerializeField] private float damageInterval = 1f; // seconds between hits
     private float lastDamageTime = Mathf.NegativeInfinity;
+    private PlayerHealth playerHealth;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     protected virtual void Start()
     {
         enemyRb = GetComponent<Rigidbody>();
         player = GameObject.Find("Player");
+
+        if (player != null)
+        {
+            playerHealth = player.GetComponent<PlayerHealth>();
+        }
 
         // start with full health
         currentHealth = maxHealth;
@@ -31,6 +37,16 @@ public class Enemy : MonoBehaviour
     // Update is called once per frame
     protected virtual void Update()
     {
+        if (player == null) return;
+
+        // if player is dead, stop moving
+        if (playerHealth != null && playerHealth.IsDead)
+        {
+            enemyRb.linearVelocity = Vector3.zero;
+            return;
+        }
+
+        // movement towards player
         Vector3 lookDirection = (player.transform.position - transform.position).normalized;
         enemyRb.linearVelocity = lookDirection * speed;
     }
@@ -39,11 +55,10 @@ public class Enemy : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
-            {
+            // if player is dead, do not damage
+            if (playerHealth != null && playerHealth.IsDead) return;
+   
                 TryDamagePlayer(collision.gameObject); //first hit as soon as enemy touches player
-            }
-
         }
     }
 
@@ -59,6 +74,9 @@ public class Enemy : MonoBehaviour
         // continuous damage to the player if touching
         if (collision.gameObject.CompareTag("Player"))
         {
+            // don't damage if player is dead
+            if (playerHealth != null && playerHealth.IsDead) return;
+
             TryDamagePlayer(collision.gameObject);
         }
     }
