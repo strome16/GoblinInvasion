@@ -5,23 +5,35 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health Settings")]
     [SerializeField] private int maxHealth = 100;
     private int currentHealth;
-    // anyone can read, but only script can change it
+
     public bool IsDead { get; private set; }
 
     private void Awake()
     {
         currentHealth = maxHealth;
         IsDead = false;
+
+        if (MainUI.Instance != null)
+        {
+            MainUI.Instance.UpdateHealth(currentHealth, maxHealth);
+        }
     }
 
     public void TakeDamage(int damage)
     {
+        if (IsDead) return; // don't take damage if already dead
+
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0);
 
+        if (MainUI.Instance != null)
+        {
+            MainUI.Instance.UpdateHealth(currentHealth, maxHealth);
+        }
+
         Debug.Log($"Player took {damage} damage, current health: {currentHealth}");
 
-        if (currentHealth <= 0)
+        if (currentHealth <= 0 && !IsDead)
         {
             Die();
         }
