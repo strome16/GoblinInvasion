@@ -14,6 +14,9 @@ public class MainUI : MonoBehaviour
     [Header("Game Over Elements")]
     [SerializeField] private GameObject gameoverPanel;
 
+    [Header("Win Elements")]
+    [SerializeField] private GameObject winPanel;
+
     private bool isGameOver = false;
 
     private void Awake()
@@ -28,6 +31,8 @@ public class MainUI : MonoBehaviour
 
         if (gameoverPanel != null)
             gameoverPanel.SetActive(false);
+        if (winPanel != null)
+            winPanel.SetActive(false);
         if (hudPanel != null)
             hudPanel.SetActive(true);
     }
@@ -56,8 +61,26 @@ public class MainUI : MonoBehaviour
         if (hudPanel != null)
             hudPanel.SetActive(false);
 
+        if (winPanel != null)
+            winPanel.SetActive(false);
+
         if (gameoverPanel != null)
             gameoverPanel.SetActive(true);
+    }
+
+    public void ShowWinPanel()
+    {
+        if (isGameOver) return;
+        isGameOver = true;
+
+        if (hudPanel != null)
+            hudPanel.SetActive(false);
+
+        if (gameoverPanel != null)
+            gameoverPanel.SetActive(false);
+
+        if (winPanel != null)
+            winPanel.SetActive(true);
     }
 
     void Update()

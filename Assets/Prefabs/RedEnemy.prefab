@@ -154,7 +154,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   speed: 3
-  pushForce: 1
+  maxHealth: 6
+  contactDamage: 10
+  damageInterval: 1
 --- !u!1001 &522638317690980659
 PrefabInstance:
   m_ObjectHideFlags: 0

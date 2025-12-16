@@ -46,6 +46,11 @@ public class PlayerHealth : MonoBehaviour
         currentHealth += amount;
         currentHealth = Mathf.Min(currentHealth, maxHealth); // clamp to maxHealth (100)
 
+        if (MainUI.Instance != null)
+        {
+            MainUI.Instance.UpdateHealth(currentHealth, maxHealth);
+        }
+
         Debug.Log($"Player healed {amount}, current health: {currentHealth}");
     }
    private void Die()
@@ -61,10 +66,16 @@ public class PlayerHealth : MonoBehaviour
         }
 
         // disable shooting
-        FirePoint fire = GetComponent<FirePoint>();
+        FirePoint fire = GetComponentInChildren<FirePoint>();
         if (fire != null)
         {
             fire.enabled = false;
+        }
+
+        //show game over UI
+        if (MainUI.Instance != null)
+        {
+            MainUI.Instance.ShowGameOver();
         }
     }
 }
