@@ -57,12 +57,12 @@ public class PlayerHealth : MonoBehaviour
     {
         IsDead = true;
         Debug.Log("Player has died!");
-        
-        // diable movement
+
+        // trigger death animation
         PlayerController controller = GetComponent<PlayerController>();
         if (controller != null)
         {
-            controller.enabled = false;
+            controller.Die(1);
         }
 
         // disable shooting

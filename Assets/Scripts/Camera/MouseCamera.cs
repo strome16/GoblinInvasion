@@ -19,6 +19,7 @@ public class MouseCamera : MonoBehaviour
     [SerializeField] private float minDistance = 0.5f;  // don't move camera inside player
 
     float yaw;
+    private Quaternion rot;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -27,18 +28,25 @@ public class MouseCamera : MonoBehaviour
 
         // start yaw from whatever Y rotation the camera has in the editor
         yaw = transform.eulerAngles.y;
+
+        rot = transform.rotation;
     }
 
     // Update is called once per frame
-    void LateUpdate()
+    void Update()
     {
         // mouse rotation
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         yaw += mouseX;
 
         // rotate camera around player
-        Quaternion rot = Quaternion.Euler(pitch, yaw, 0);
+        rot = Quaternion.Euler(pitch, yaw, 0);
 
+        transform.rotation = rot;
+    }
+
+    void LateUpdate()
+    {
         // where the camera wants to be (above and behind player)
         Vector3 desiredOffset = rot * offset;
         Vector3 desiredPos = player.position + desiredOffset;
@@ -52,24 +60,14 @@ public class MouseCamera : MonoBehaviour
         if (Physics.SphereCast(origin, collisionRadius, direction, out RaycastHit hit, targetDistance, collisionLayers, QueryTriggerInteraction.Ignore))
         {
             // move camera to just in front of the wall
-            float adjustedDistance = hit.distance - collisionBuffer;
-
-            // Don't let the camera get too close to the player
-            if (adjustedDistance < minDistance)
-            {
-                adjustedDistance = minDistance;
-            }
-
+            float adjustedDistance = Mathf.Max(hit.distance - collisionBuffer, minDistance);
             transform.position = origin + direction * adjustedDistance;
         }
 
         else
         {
-            // no wall, use normal desired position
-            transform.position = desiredPos;
+            transform.position = desiredPos;    
         }
-
-        // apply rotation to camera
-        transform.rotation = rot;
+          
     }
 }
