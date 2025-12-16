@@ -1,21 +1,25 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody))]
 public class Enemy : MonoBehaviour
 {
 
     [Header("Movement")]
-    public float speed = 3f;
+    [SerializeField] protected float speed = 3f;
+    [SerializeField] private float pushForce = 1;
+
     private Rigidbody enemyRb;
     private GameObject player;
-    private float pushForce = 1;
+    protected Transform playerTransform;
 
     [Header("Health")]
     [SerializeField] protected int maxHealth = 3;
     private int currentHealth;
 
     [Header("Combat")]
-    [SerializeField] protected int contactDamage = 10; // deal 10 damage upon contact wtih player
-    [SerializeField] private float damageInterval = 1f; // seconds between hits
+    [SerializeField] protected int contactDamage = 10;      // deal 10 damage upon contact wtih player
+    [SerializeField] private float damageInterval = 1f;     // seconds between hits
+
     private float lastDamageTime = Mathf.NegativeInfinity;
     private PlayerHealth playerHealth;
 
@@ -23,21 +27,38 @@ public class Enemy : MonoBehaviour
     protected virtual void Start()
     {
         enemyRb = GetComponent<Rigidbody>();
-        player = GameObject.Find("Player");
 
-        if (player != null)
+        GameObject playerObj = GameObject.Find("Player");
+        if (playerObj != null)
         {
-            playerHealth = player.GetComponent<PlayerHealth>();
+            playerTransform = playerObj.transform;
+            playerHealth = playerObj.GetComponent<PlayerHealth>();
         }
+        else
+        {
+            Debug.LogWarning($"{nameof(Enemy)} on {name} could not find a GameObject named 'Player'.");
+        }
+
+        // allow subclasses to adjust stats before setting currentHealth
+        InitializeStats();
 
         // start with full health
         currentHealth = maxHealth;
     }
 
+    /// <summary>
+    /// Subclasses can override this to change speed / maxHealth / contactDamage
+    /// Called once from Start(), before currentHealth is set
+    /// </summary>
+    protected virtual void InitializeStats()
+    {
+        // base enemy uses inspector values
+    }
+
     // Update is called once per frame
     protected virtual void Update()
     {
-        if (player == null) return;
+        if (playerTransform == null) return;
 
         // if player is dead, stop moving
         if (playerHealth != null && playerHealth.IsDead)
@@ -46,23 +67,47 @@ public class Enemy : MonoBehaviour
             return;
         }
 
-        // movement towards player
-        Vector3 lookDirection = (player.transform.position - transform.position).normalized;
-        enemyRb.linearVelocity = lookDirection * speed;
+        // direction to player
+        Vector3 dir = playerTransform.position - transform.position;
+        dir.y = 0f;
+
+
+        if (dir.sqrMagnitude > 0.001f)
+        {
+            // rotate to face player
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                targetRot,
+                10f * Time.deltaTime);
+
+            // move towards player
+            Vector3 horizontalVel = dir.normalized * speed;
+            enemyRb.linearVelocity = new Vector3(
+                horizontalVel.x,
+                enemyRb.linearVelocity.y, // keeps gravity
+                horizontalVel.z);
+        }
+        else
+        {
+            // stop horizontal motion, keep vertical
+            enemyRb.linearVelocity = Vector3.zero;
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            // if player is dead, do not damage
+        if (!collision.gameObject.CompareTag("Player"))
+            return;
+
+        // if player is dead, do not damage
             if (playerHealth != null && playerHealth.IsDead) return;
-   
-                TryDamagePlayer(collision.gameObject); //first hit as soon as enemy touches player
-        }
+
+        //first hit as soon as enemy touches player
+        TryDamagePlayer(collision.gameObject); 
     }
 
-    void OnCollisionStay(Collision collision)
+    private void OnCollisionStay(Collision collision)
     {
         // keep enemies away from each other
         if (collision.gameObject.CompareTag("Enemy"))
@@ -74,7 +119,6 @@ public class Enemy : MonoBehaviour
         // continuous damage to the player if touching
         if (collision.gameObject.CompareTag("Player"))
         {
-            // don't damage if player is dead
             if (playerHealth != null && playerHealth.IsDead) return;
 
             TryDamagePlayer(collision.gameObject);
@@ -84,27 +128,27 @@ public class Enemy : MonoBehaviour
     private void TryDamagePlayer(GameObject playerObject)
     {
         // only damage if enough time has passed since last hit
-        if (Time.time >= lastDamageTime + damageInterval)
+        if (Time.time < lastDamageTime + damageInterval)
+            return;
+
+        if (playerObject.TryGetComponent<PlayerHealth>(out var targetHealth))
         {
-            PlayerHealth playerHealth = playerObject.GetComponent<PlayerHealth>();
-            if (playerHealth != null)
-            {
-                playerHealth.TakeDamage(contactDamage);
-                lastDamageTime = Time.time;
-            }
+            targetHealth.TakeDamage(contactDamage);
+            lastDamageTime = Time.time;
         }
     }
 
-    public void TakeDamage(int damage)
+    public virtual void TakeDamage(int damage)
     {
         currentHealth -= damage;
+
         if (currentHealth <= 0)
         {
             Die();
         }
     }
 
-    private void Die()
+    protected virtual void Die()
     {
         Destroy(gameObject);
     }

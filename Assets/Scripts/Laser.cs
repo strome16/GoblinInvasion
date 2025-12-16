@@ -3,16 +3,23 @@ using UnityEngine;
 public class Laser : MonoBehaviour
 {
     [Header("Laser Settings")]
-    public float speed = 20f; // speed of the laser projectile
-    public int damage = 1; // damage dealt by the laser
+    [SerializeField] private float speed = 20f; // speed of the laser projectile
+    [SerializeField] private int damage = 1; // damage dealt by the laser
+    [SerializeField] private float maxLife = 5f;
+
+    private void Start()
+    {
+        // cleans up bullet in case it doesnt hit anything
+        Destroy(gameObject, maxLife);
+    }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         transform.position += transform.forward * speed * Time.deltaTime;
     }
 
-    void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
         // check if the laser hits an enemy
         Enemy enemy = other.GetComponent<Enemy>();
@@ -26,7 +33,7 @@ public class Laser : MonoBehaviour
             return; // exit method before checking for wall
         }
 
-        if (other.gameObject.CompareTag("Wall"))
+        if (other.CompareTag("Wall"))
         {
             Destroy(gameObject);
         }

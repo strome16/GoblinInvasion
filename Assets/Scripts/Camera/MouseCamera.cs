@@ -1,69 +1,82 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class MouseCamera : MonoBehaviour
 {
+    [Header("Target")]
+    [SerializeField] private Transform player;
 
-    public Transform player;
-    public float mouseSensitivity = 100f;
+    [Header("Rotation")]
+    [SerializeField] private float mouseSensitivity = 100f;
 
     [Header("Camera Positioning")]
-    // offset from player position
-    [SerializeField] private Vector3 offset = new Vector3(0, 3, -3.5f);
-    // how far camera tilts down
-    [SerializeField] private float pitch = 21f;
+    [SerializeField] private Vector3 offset = new Vector3(0, 3, -3.5f);     // offset from player position
+    [SerializeField] private float pitch = 21f;                             // how far camera tilts down
 
     [Header("Collision")]
-    [SerializeField] private LayerMask collisionLayers;  // which layers count as "walls"
+    [SerializeField] private LayerMask collisionLayers;     // which layers count as "walls"
     [SerializeField] private float collisionRadius = 0.3f;  // radius of sphere for collision detection
     [SerializeField] private float collisionBuffer = 0.1f;  // how far from the wall to stay
-    [SerializeField] private float minDistance = 0.5f;  // don't move camera inside player
+    [SerializeField] private float minDistance = 0.5f;      // don't move camera inside player
 
     float yaw;
-    private Quaternion rot;
+    private Quaternion currentRotation;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
 
+        // auto-find player if not-assigned
+        if (player == null)
+        {
+            GameObject playerObj = GameObject.Find("Player");
+            if (playerObj != null)
+            {
+                player = playerObj.transform;
+            }
+            else
+            {
+                Debug.LogWarning($"{nameof(MouseCamera)} on {name} has no player assigned and could not find one named 'Player'.");
+            }
+        }
+
         // start yaw from whatever Y rotation the camera has in the editor
         yaw = transform.eulerAngles.y;
-
-        rot = transform.rotation;
+        currentRotation = transform.rotation;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
         // mouse rotation
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         yaw += mouseX;
 
         // rotate camera around player
-        rot = Quaternion.Euler(pitch, yaw, 0);
-
-        transform.rotation = rot;
+        currentRotation = Quaternion.Euler(pitch, yaw, 0);
+        transform.rotation = currentRotation;
     }
 
-    void LateUpdate()
+    private void LateUpdate()
     {
-        // where the camera wants to be (above and behind player)
-        Vector3 desiredOffset = rot * offset;
-        Vector3 desiredPos = player.position + desiredOffset;
+        if (player == null) return;
 
-        // ---- Collision Detection ----
+        // where the camera wants to be (above and behind player)
+        Vector3 desiredOffset = currentRotation * offset;
         Vector3 origin = player.position;
         Vector3 direction = desiredOffset.normalized;
         float targetDistance = desiredOffset.magnitude;
 
+        Vector3 desiredPos = origin + desiredOffset;
+
         //cast a sphere from player to desired camera position
-        if (Physics.SphereCast(origin, collisionRadius, direction, out RaycastHit hit, targetDistance, collisionLayers, QueryTriggerInteraction.Ignore))
+        if (Physics.SphereCast(origin, collisionRadius, direction, 
+            out RaycastHit hit, targetDistance, collisionLayers, 
+            QueryTriggerInteraction.Ignore))
         {
             // move camera to just in front of the wall
             float adjustedDistance = Mathf.Max(hit.distance - collisionBuffer, minDistance);
             transform.position = origin + direction * adjustedDistance;
         }
-
         else
         {
             transform.position = desiredPos;    

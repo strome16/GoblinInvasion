@@ -3,26 +3,26 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
+    [SerializeField] private float speed = 10f;
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private float gravityModifier = 2;
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private float turnSpeed = 720f;
+
     private Rigidbody playerRb;
-    public float speed = 10f;
-    public float jumpForce = 8f;
-    public float gravityModifier = 2;
-    public Transform cameraTransform;
-    public float turnSpeed = 720f;
     private Vector3 moveDir;
     private Quaternion desiredRotation;
 
     [Header("Sprint")]
-    public float speedMultiplier = 1.5f;
-    public float accelerationSpeed = 8f;
+    [SerializeField] private float speedMultiplier = 1.5f;
+    [SerializeField] private float accelerationSpeed = 8f;
     private float currentSpeedMultiplier = 1f;  // smoothed value
 
-    [Header("Input")]
+    [Header("Animations")]
+    [SerializeField] private Animator animator;
+
     private float horizontalInput;
     private float verticalInput;
-
-    [Header("Animations")]
-    private Animator animator;
 
     private bool isOnGround = true;
     private bool wantsToJump;
@@ -30,29 +30,47 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private int deathType = 1;
     private bool shotQueued;
 
-    void Start()
+    private void Start()
     {
         playerRb = GetComponent<Rigidbody>();
+        
+        if (playerRb == null )
+            Debug.LogError($"{nameof(PlayerController)} on {name} has no Rigidbody.");
+
+        // set global gravity scale
         Physics.gravity = new Vector3(0, -9.81f * gravityModifier, 0);
 
         desiredRotation = transform.rotation;
-        animator = GetComponentInChildren<Animator>(true);
+
+        if (animator == null)
+            animator = GetComponentInChildren<Animator>(true);
 
         if (animator != null)
         {
             animator.SetInteger("WeaponType_int", 1);
         }
+        else
+        {
+            Debug.LogWarning($"{nameof(PlayerController)} on {name} has no Animator assigned or found in children.");
+        }
+
+        if (cameraTransform == null && Camera.main != null)
+        {
+            cameraTransform = Camera.main.transform;
+        }
     }
 
-    void Update()
+    private void Update()
     {
         if (isDead) return;
-
+        if (cameraTransform == null) return;
+       
+        // Aiming
         bool isAiming = Input.GetMouseButton(1);
-
         if (animator != null)
             animator.SetBool("IsAiming", isAiming);
-     
+
+        // shooting (for animation trigger)
         if (isAiming && Input.GetMouseButtonDown(0))
         {
             shotQueued = true;
@@ -64,7 +82,7 @@ public class PlayerController : MonoBehaviour
         }
         shotQueued = false;
 
-        // input
+        // movement input
         horizontalInput = Input.GetAxis("Horizontal");
         verticalInput = Input.GetAxis("Vertical");
 
@@ -75,16 +93,15 @@ public class PlayerController : MonoBehaviour
         camRight.y = 0;
         camForward.Normalize();
         camRight.Normalize();
+
         moveDir = (camForward * verticalInput + camRight * horizontalInput).normalized;
 
-        // sprint multiplier (reset every frame)
-        float targetMultiplier = 1f;
-        if (Input.GetKey(KeyCode.LeftShift) && isOnGround && verticalInput > 0f)
-            targetMultiplier = speedMultiplier;
-
+        // sprint multiplier
+        bool sprintInput = Input.GetKey(KeyCode.LeftShift) && isOnGround && verticalInput > 0f;
+        float targetMultiplier = sprintInput ? speedMultiplier : 1f;
         currentSpeedMultiplier = Mathf.Lerp(currentSpeedMultiplier, targetMultiplier, accelerationSpeed * Time.deltaTime);
 
-        // allows player to jump when on the ground
+        // Jump
         if (Input.GetKeyDown(KeyCode.Space) && isOnGround)
         {
             wantsToJump = true;
@@ -100,7 +117,6 @@ public class PlayerController : MonoBehaviour
 
         // rotate player to face camera direction
         bool hasMoveInput = Mathf.Abs(horizontalInput) > 0.1f || Mathf.Abs(verticalInput) > 0.1f;
-
         if (hasMoveInput)
         {
             Vector3 facingDir = cameraTransform.forward;
@@ -110,22 +126,17 @@ public class PlayerController : MonoBehaviour
                 desiredRotation = Quaternion.LookRotation(facingDir);
         }
 
-        // animator parameters
+        // animator movement parameters
         if (animator != null)
         {
             animator.SetFloat("Speed_f", moveDir.magnitude);
-
-            bool isSprintingAnim = Input.GetKey(KeyCode.LeftShift) && isOnGround && verticalInput > 0.01f;
-            animator.SetBool("IsSprinting", isSprintingAnim);
-        }
-
-        
-
+            animator.SetBool("IsSprinting", sprintInput);
+        }  
     }
       
     private void FixedUpdate()
     {
-        if (isDead) return;
+        if (isDead || playerRb == null) return;
 
         Vector3 currentVel = playerRb.linearVelocity;
         Vector3 targetVel = moveDir * speed * currentSpeedMultiplier;
@@ -133,7 +144,7 @@ public class PlayerController : MonoBehaviour
         // move player
         playerRb.linearVelocity = new Vector3(targetVel.x, currentVel.y, targetVel.z);
 
-        //jump
+        // jump (impulse)
         if (wantsToJump)
         {
             playerRb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
@@ -141,20 +152,21 @@ public class PlayerController : MonoBehaviour
             wantsToJump = false;
         }
 
+        // smooth rotation
         playerRb.MoveRotation(
             Quaternion.RotateTowards(playerRb.rotation, desiredRotation, turnSpeed * Time.fixedDeltaTime));
 
     }
 
       private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
+      {
+        if (!collision.gameObject.CompareTag("Ground")) return;
+
             isOnGround = true;
+
             if (animator != null)
                 animator.SetBool("Jump_b", false);
-        }
-    }
+      }
 
     private void OnCollisionStay(Collision collision)
     {
@@ -176,7 +188,7 @@ public class PlayerController : MonoBehaviour
         // stop movement immediately
         moveDir = Vector3.zero;
         wantsToJump = false;
-        
+
 
         if (animator != null)
         {
@@ -192,10 +204,11 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("IsDead", true);
         }
 
-        // physics stop, gravity still works
-        playerRb.linearVelocity = Vector3.zero;
-        playerRb.angularVelocity = Vector3.zero;
-
+        if (playerRb != null)
+        {
+            // physics stop, gravity still works
+            playerRb.linearVelocity = Vector3.zero;
+            playerRb.angularVelocity = Vector3.zero;
+        }
     }
-
 }

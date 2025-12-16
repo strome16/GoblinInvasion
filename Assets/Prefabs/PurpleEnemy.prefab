@@ -118,7 +118,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 112
+  m_Constraints: 80
   m_CollisionDetection: 0
 --- !u!65 &5994353188663322589
 BoxCollider:
@@ -165,6 +165,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5063246259993814955}
     m_Modifications:
+    - target: {fileID: 3288321377334716654, guid: aa84d2fa18416af4bbf515f179dab2be, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5757656594215558168, guid: aa84d2fa18416af4bbf515f179dab2be, type: 3}
       propertyPath: m_Name
       value: Devil_Purple (Origin)

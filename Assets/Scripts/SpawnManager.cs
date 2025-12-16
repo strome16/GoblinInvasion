@@ -1,35 +1,41 @@
-using UnityEditor.Build;
 using UnityEngine;
 
 public class SpawnManager : MonoBehaviour
 {
+    [Header("Prefabs")]
+    [SerializeField] private GameObject[] enemyPrefabs;
+    [SerializeField] private GameObject powerupPrefab;
 
-    public GameObject[] enemyPrefabs;
-    public GameObject powerupPrefab;
+    [Header("Arena")]
+    [SerializeField] private BoxCollider arenaBounds;
+    [SerializeField] private float spawnPotion = 1f; // Height at which to spawn objects
+    [SerializeField] private float spawnEnemy = 0f;     // height of enemy spawn
+    [SerializeField] private float edgePadding = 1.0f; // Padding from the edges of the arena
 
-    public BoxCollider arenaBounds;
+    [Header("Waves")]
 
-    public int enemyCount;
-    public int waveNumber = 1;
+    [SerializeField] private int waveNumber = 1;
+    [SerializeField] private int maxWave = 30;
 
-    public float spawnPotion = 1f; // Height at which to spawn objects
-    public float spawnEnemy = 0f;     // height of enemy spawn
-    public float edgePadding = 1.0f; // Padding from the edges of the arena
-
+    private int enemyCount;
     private PlayerHealth playerHealth;
+    private Transform playerTransform;
 
-    [Header("Win Condition")]
-    [SerializeField] private int maxWave = 30;          // final wave
     private bool gameEnded = false;                     // stop logic after win/lose
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
         // get PlayerHealth so we can stop spawning if player is dead
         GameObject player = GameObject.Find("Player");
         if (player != null)
         {
             playerHealth = player.GetComponent<PlayerHealth>();
+            playerTransform = player.transform;
+        }
+        else
+        {
+            Debug.LogWarning("SpawnManager could not find a GameObject named 'Player'.");
         }
 
         // spawn first wave
@@ -42,11 +48,12 @@ public class SpawnManager : MonoBehaviour
         }
 
         // spawn initial powerup
-        Instantiate(powerupPrefab, GeneratePotionPosition(), powerupPrefab.transform.rotation);
+        if (powerupPrefab != null)
+            Instantiate(powerupPrefab, GeneratePotionPosition(), powerupPrefab.transform.rotation);
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         // if game has already ended, do nothing
         if (gameEnded) return;
@@ -57,44 +64,49 @@ public class SpawnManager : MonoBehaviour
             return;
         }
 
-        enemyCount = FindObjectsByType<Enemy>(FindObjectsSortMode.None).Length;
-
         // counts number of enemies in the scene, if 0, spawns next wave
-        if (enemyCount == 0)
+        enemyCount = FindObjectsByType<Enemy>(FindObjectsSortMode.None).Length;
+        if (enemyCount != 0) return;
+
+        // if final wave defeated, trigger win instead of next wave
+        if (waveNumber >= maxWave)
         {
-            // if final wave defeated, trigger win instead of next wave
-            if (waveNumber >= maxWave)
-            {
-                gameEnded = true;
+            gameEnded = true;
 
-                if (MainUI.Instance != null)
-                {
-                    MainUI.Instance.ShowWinPanel();
-                }
-                return; // don't spawn more enemies or health potions
-            }
-
-            // increase wave number
-            waveNumber++;
-            SpawnEnemyWave(waveNumber);
-
-            // update UI for new wave
             if (MainUI.Instance != null)
             {
-                MainUI.Instance.UpdateWave(waveNumber);
+                MainUI.Instance.ShowWinPanel();
             }
+            return; // don't spawn more enemies or health potions
+        }
 
-            // spawn a powerup if there are none present
-            int powerupCount = GameObject.FindGameObjectsWithTag("Powerup").Length;
-            if (powerupCount == 0)
-            {
-                Instantiate(powerupPrefab, GeneratePotionPosition(), powerupPrefab.transform.rotation);
-            }
+        // increase wave number
+        waveNumber++;
+        SpawnEnemyWave(waveNumber);
+
+        // update UI for new wave
+        if (MainUI.Instance != null)
+        {
+            MainUI.Instance.UpdateWave(waveNumber);
+        }
+
+        // spawn a powerup if there are none present
+        int powerupCount = GameObject.FindGameObjectsWithTag("Powerup").Length;
+        if (powerupCount == 0 && powerupPrefab != null)
+        {
+            Instantiate(powerupPrefab, GeneratePotionPosition(), powerupPrefab.transform.rotation);
         }
     }
 
-    void SpawnEnemyWave(int enemiesToSpawn)
+
+    private void SpawnEnemyWave(int enemiesToSpawn)
     {
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+        {
+            Debug.LogWarning("SpawnManager has no enemyPrefabs assigned.");
+            return;
+        }
+
         // spawns a number of enemies equal to the wave number
         for (int i = 0; i < enemiesToSpawn; i++)
         {
@@ -102,7 +114,22 @@ public class SpawnManager : MonoBehaviour
             int index = Random.Range(0, enemyPrefabs.Length);
             GameObject enemyToSpawn = enemyPrefabs[index];
 
-            Instantiate(enemyPrefabs[index], GenerateEnemyPosition(), enemyPrefabs[index].transform.rotation);
+            Vector3 spawnPos = GenerateEnemyPosition();
+            Quaternion spawnRot = enemyToSpawn.transform.rotation;
+
+            // if player location known, face towards them
+            if (playerTransform != null)
+            {
+                Vector3 toPlayer = playerTransform.position - spawnPos;
+                toPlayer.y = 0f; // keeps upright
+
+                if (toPlayer.sqrMagnitude > 0.0001f)
+                {
+                    spawnRot = Quaternion.LookRotation(toPlayer);
+                }
+            }
+
+            Instantiate(enemyToSpawn, spawnPos, spawnRot);
         }
     }
 

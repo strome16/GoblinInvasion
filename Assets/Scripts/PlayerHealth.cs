@@ -4,7 +4,7 @@ public class PlayerHealth : MonoBehaviour
 {
     [Header("Health Settings")]
     [SerializeField] private int maxHealth = 100;
-    private int currentHealth;
+    public int currentHealth { get; private set;  }
 
     public bool IsDead { get; private set; }
 

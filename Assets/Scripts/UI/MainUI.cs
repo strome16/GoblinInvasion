@@ -83,7 +83,7 @@ public class MainUI : MonoBehaviour
             winPanel.SetActive(true);
     }
 
-    void Update()
+    private void Update()
     {
         if (!isGameOver) return;
 
