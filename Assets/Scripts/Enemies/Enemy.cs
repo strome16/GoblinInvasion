@@ -125,7 +125,7 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    private void TryDamagePlayer(GameObject playerObject)
+    private void TryDamagePlayer(GameObject playerObject)  // ABSTRACTION
     {
         // only damage if enough time has passed since last hit
         if (Time.time < lastDamageTime + damageInterval)

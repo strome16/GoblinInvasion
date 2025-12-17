@@ -6,7 +6,7 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private int maxHealth = 100;
     public int currentHealth { get; private set;  }
 
-    public bool IsDead { get; private set; }
+    public bool IsDead { get; private set; }  // ENCAPSULATION
 
     private void Awake()
     {

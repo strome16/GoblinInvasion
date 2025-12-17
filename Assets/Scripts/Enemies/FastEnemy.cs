@@ -1,9 +1,9 @@
 using UnityEngine;
 
-public class FastEnemy : Enemy
+public class FastEnemy : Enemy // INHERITANCE
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    protected override void InitializeStats()
+    protected override void InitializeStats() // POLYMORPHISM
     {
 
         speed = 6f;         // Fast enemy speed
